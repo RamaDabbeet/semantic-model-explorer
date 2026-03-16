@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Semantic Model Explorer</title>
+<style>
+:root, [data-theme="light"] {
+  --accent: #2563EB; --accent-hover: #1D4ED8; --accent-bg: #EFF6FF; --accent-light: #93C5FD;
+  --toolbar-bg: #1E293B; --toolbar-border: #3B82F6;
+  --bg-primary: #FFFFFF; --bg-secondary: #F8FAFC; --bg-tertiary: #F1F5F9;
+  --bg-sidebar: #F8FAFC; --bg-card: #FFFFFF; --bg-hover: #EFF6FF; --bg-active: #DBEAFE;
+  --text-primary: #1E293B; --text-secondary: #475569; --text-muted: #94A3B8;
+  --border: #E2E8F0; --border-hover: #93C5FD;
+  --danger: #EF4444;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06); --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --radius-sm: 4px; --radius-md: 8px;
+  --badge-measure: #2563EB; --badge-table: #1E293B; --badge-column: #94A3B8; --badge-report: #DC2626;
+  --badge-fact: #0891B2; --badge-dimension: #7C3AED; --badge-measure-table: #059669; --badge-parameter: #D97706;
+}
+[data-theme="dark"] {
+  --accent: #60A5FA; --accent-hover: #93C5FD; --accent-bg: #1E3A5F; --accent-light: #3B82F6;
+  --toolbar-bg: #0F172A; --toolbar-border: #3B82F6;
+  --bg-primary: #0F172A; --bg-secondary: #1E293B; --bg-tertiary: #334155;
+  --bg-sidebar: #0F172A; --bg-card: #1E293B; --bg-hover: #1E3A5F; --bg-active: #1E40AF;
+  --text-primary: #F1F5F9; --text-secondary: #CBD5E1; --text-muted: #64748B;
+  --border: #334155; --border-hover: #60A5FA;
+  --danger: #F87171;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3); --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+  --badge-measure: #60A5FA; --badge-table: #93C5FD; --badge-column: #64748B; --badge-report: #F87171;
+  --badge-fact: #22D3EE; --badge-dimension: #A78BFA; --badge-measure-table: #34D399; --badge-parameter: #FBBF24;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg-primary);color:var(--text-primary);line-height:1.5;overflow:hidden;height:100vh}
+#toolbar{display:flex;align-items:center;justify-content:space-between;height:52px;padding:0 16px;background:var(--toolbar-bg);color:#FFF;border-bottom:2px solid var(--toolbar-border);z-index:100;gap:16px}
+.toolbar-left{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.app-title{font-size:15px;font-weight:600;letter-spacing:0.3px}
+.toolbar-center{flex:1;max-width:480px}
+#global-search{width:100%;padding:6px 12px;border:1px solid rgba(255,255,255,0.2);border-radius:var(--radius-sm);background:rgba(255,255,255,0.1);color:#FFF;font-size:13px;outline:none}
+#global-search::placeholder{color:rgba(255,255,255,0.5)}
+#global-search:focus{border-color:var(--accent);background:rgba(255,255,255,0.15)}
+.search-results{position:absolute;top:100%;left:0;right:0;max-height:400px;overflow-y:auto;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--shadow-md);z-index:200;margin-top:4px}
+.search-result-item{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;color:var(--text-primary);font-size:13px}
+.search-result-item:hover{background:var(--bg-hover)}
+.search-type-badge{font-size:10px;font-weight:600;text-transform:uppercase;padding:2px 6px;border-radius:3px;color:#fff;flex-shrink:0}
+.search-type-badge[data-type="measure"]{background:var(--badge-measure)}
+.search-type-badge[data-type="table"]{background:var(--badge-table)}
+.search-type-badge[data-type="column"]{background:var(--badge-column)}
+.search-type-badge[data-type="report"]{background:var(--badge-report)}
+.toolbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.btn-icon{width:32px;height:32px;border:1px solid rgba(255,255,255,0.2);border-radius:var(--radius-sm);background:transparent;color:#FFF;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.btn-icon:hover{background:rgba(255,255,255,0.1)}
+.toolbar-meta{font-size:11px;color:rgba(255,255,255,0.5)}
+.app-layout{display:flex;height:calc(100vh - 52px)}
+.sidebar{width:280px;flex-shrink:0;background:var(--bg-sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.tab-panel{flex:1;overflow-y:auto;padding:8px}
+.tree-group{margin-bottom:2px}
+.tree-group-header{display:flex;align-items:center;gap:6px;padding:6px 8px;font-size:13px;font-weight:600;color:var(--text-primary);cursor:pointer;border-radius:var(--radius-sm)}
+.tree-group-header:hover{background:var(--bg-hover)}
+.tree-group-header .chevron{font-size:10px;color:var(--text-muted);transition:transform 0.2s}
+.tree-group-header .chevron.open{transform:rotate(90deg)}
+.tree-group-header .count{margin-left:auto;font-size:11px;color:var(--text-muted);font-weight:400}
+.tree-children{padding-left:16px}
+.tree-children .tree-children{padding-left:12px}
+.tree-children .tree-children .tree-item{padding:3px 6px;font-size:11px}
+.tree-item{display:flex;align-items:center;gap:6px;padding:4px 8px;font-size:12px;color:var(--text-secondary);cursor:pointer;border-radius:var(--radius-sm);overflow:hidden}
+.tree-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.main-content{flex:1;overflow-y:auto;padding:24px}
+.view{animation:fadeIn 0.2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:20px;box-shadow:var(--shadow-sm);margin-bottom:16px}
+.card-title{font-size:16px;font-weight:600;color:var(--text-primary);margin-bottom:8px}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px}
+.stat-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;text-align:center;cursor:pointer;transition:all 0.2s}
+.stat-card:hover{border-color:var(--accent);box-shadow:var(--shadow-md);transform:translateY(-1px)}
+.stat-value{font-size:28px;font-weight:700;color:var(--accent)}
+.stat-label{font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px}
+.domain-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:20px}
+.domain-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:20px;cursor:pointer;transition:all 0.2s;border-left:4px solid var(--accent)}
+.domain-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
+.domain-card h3{font-size:16px;font-weight:600;margin-bottom:8px}
+.domain-card .domain-meta{font-size:13px;color:var(--text-secondary)}
+.breadcrumbs{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);margin-bottom:16px}
+.breadcrumbs a{color:var(--accent);text-decoration:none;cursor:pointer}
+.breadcrumbs a:hover{text-decoration:underline}
+.section-title{font-size:18px;font-weight:700;color:var(--text-primary);margin-bottom:8px}
+.section-subtitle{font-size:13px;color:var(--text-muted);margin-bottom:20px}
+.column-table{width:100%;border-collapse:collapse;font-size:13px}
+.column-table th{text-align:left;padding:8px 12px;background:var(--bg-tertiary);color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border)}
+.column-table td{padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text-primary)}
+.column-table tbody tr:hover td{background:var(--bg-hover)}
+.glossary-cat-header td{background:var(--bg-tertiary);font-weight:700;font-size:13px;padding:10px 12px !important;border-bottom:2px solid var(--border)}
+.glossary-cat-icon{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;color:#fff;font-size:11px;font-weight:700;margin-right:6px;vertical-align:middle}
+.glossary-cat-badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:3px;color:#fff;white-space:nowrap}
+.glossary-row.clickable{cursor:pointer}
+.glossary-row.clickable:hover td{background:var(--bg-hover)}
+.glossary-row.clickable .glossary-term{color:var(--accent)}
+.glossary-term{font-weight:500}
+.glossary-desc{color:var(--text-secondary);font-size:12px;line-height:1.5}
+.glossary-pages{color:var(--text-muted);font-size:11px}
+.table-type-badge{font-size:9px;font-weight:600;text-transform:uppercase;padding:1px 4px;border-radius:2px;color:#fff}
+.table-type-badge.fact{background:var(--badge-fact)}
+.table-type-badge.dimension{background:var(--badge-dimension)}
+.table-type-badge.measure{background:var(--badge-measure-table)}
+.table-type-badge.parameter{background:var(--badge-parameter)}
+.table-type-badge.other{background:var(--badge-column)}
+.view-toggle{display:inline-flex;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:16px}
+.view-toggle button{padding:6px 16px;border:none;background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer}
+.view-toggle button.active{background:var(--accent);color:#fff}
+.biz-section{margin-bottom:16px}
+.biz-section h4{font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px}
+.biz-section p{font-size:14px;color:var(--text-primary);line-height:1.6}
+.dax-block{background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;font-family:'Cascadia Code','Fira Code','Consolas',monospace;font-size:13px;line-height:1.6;white-space:pre-wrap;overflow-x:auto}
+.dax-keyword{color:#0000FF;font-weight:600}
+.dax-number{color:#098658}
+[data-theme="dark"] .dax-keyword{color:#569CD6}
+[data-theme="dark"] .dax-number{color:#B5CEA8}
+.dep-chip{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:12px;cursor:pointer}
+.dep-chip.measure-dep{background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent)}
+.measure-list{list-style:none}
+.measure-list-item{display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:13px;color:var(--text-secondary);cursor:pointer;border-radius:var(--radius-sm)}
+.measure-list-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.hidden{display:none !important}
+@media(max-width:768px){.sidebar{width:240px}.toolbar-center{display:none}}
+@media(max-width:600px){.sidebar{display:none}}
+.lineage-page-btn{padding:6px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-card);color:var(--text-secondary);font-size:12px;cursor:pointer;transition:all 0.15s}
+.lineage-page-btn:hover{border-color:var(--accent);color:var(--text-primary)}
+.lineage-page-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.lin-grid{display:grid;grid-template-columns:280px 1fr;gap:20px;min-height:400px}
+.lin-pick{border-right:1px solid var(--border);padding-right:16px}
+.lin-pick-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:10px}
+.lin-pick-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;color:var(--text-secondary);border:1px solid transparent;transition:all 0.15s;margin-bottom:2px}
+.lin-pick-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.lin-pick-item.active{background:var(--accent-bg);color:var(--accent);border-color:var(--accent);font-weight:600}
+.lin-pick-dot{width:8px;height:8px;border-radius:50%;background:var(--badge-measure);flex-shrink:0}
+.lin-tree{padding:4px 0}
+.lin-empty{color:var(--text-muted);font-size:13px;font-style:italic;padding:40px 20px;text-align:center}
+.lin-root{margin-bottom:24px}
+.lin-root-header{display:flex;align-items:center;gap:10px;padding:12px 16px;background:linear-gradient(135deg,#78350F,#92400E);border:1.5px solid #D97706;border-radius:8px;color:#FDE68A;font-weight:600;font-size:14px;margin-bottom:12px}
+[data-theme="light"] .lin-root-header{background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border-color:#FCD34D;color:#92400E}
+.lin-root-dot{width:10px;height:10px;border-radius:50%;background:#FBBF24;flex-shrink:0}
+.lin-root-table{font-size:11px;font-weight:400;margin-left:auto;opacity:0.7}
+.lin-deps{padding-left:24px;border-left:2px solid var(--border);margin-left:20px}
+.lin-dep{display:flex;align-items:center;gap:8px;padding:8px 12px;margin-bottom:4px;border-radius:6px;font-size:12px;cursor:pointer;transition:all 0.15s;position:relative}
+.lin-dep::before{content:'';position:absolute;left:-25px;top:50%;width:24px;height:0;border-top:2px solid var(--border)}
+.lin-dep:hover{transform:translateX(2px)}
+.lin-dep-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.lin-dep-name{font-weight:500}
+.lin-dep-type{font-size:10px;margin-left:auto;opacity:0.6;flex-shrink:0}
+.lin-dep.submeasure{background:#1E1B4B;border:1px solid #6366F1;color:#C7D2FE}
+.lin-dep.submeasure .lin-dep-dot{background:#818CF8}
+.lin-dep.column{background:#4C1D95;border:1px solid #7C3AED;color:#DDD6FE}
+.lin-dep.column .lin-dep-dot{background:#A78BFA}
+[data-theme="light"] .lin-dep.submeasure{background:#EEF2FF;border-color:#A5B4FC;color:#3730A3}
+[data-theme="light"] .lin-dep.submeasure .lin-dep-dot{background:#6366F1}
+[data-theme="light"] .lin-dep.column{background:#F5F3FF;border-color:#C4B5FD;color:#5B21B6}
+[data-theme="light"] .lin-dep.column .lin-dep-dot{background:#7C3AED}
+.lin-dep-group-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);padding:8px 0 4px 0}
+.lin-no-deps{color:var(--text-muted);font-size:12px;font-style:italic;padding:8px 12px}
+@media(max-width:900px){.lin-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+  <header id="toolbar">
+    <div class="toolbar-left" onclick="renderHome()" style="cursor:pointer" title="Home">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="4" fill="#3B82F6"/><text x="14" y="19" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">S</text></svg>
+      <span class="app-title">Semantic Model Explorer</span>
+    </div>
+    <div class="toolbar-center">
+      <div style="position:relative">
+        <input type="text" id="global-search" placeholder="Search measures, tables, reports...  ( / )" autocomplete="off" />
+        <div id="search-results" class="search-results hidden"></div>
+      </div>
+    </div>
+    <div class="toolbar-right">
+      <button id="btn-theme-toggle" class="btn-icon" title="Toggle theme"><span id="theme-icon">&#9790;</span></button>
+    </div>
+  </header>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div style="padding:8px;border-bottom:1px solid var(--border);flex-shrink:0"><input type="text" id="sidebar-search" placeholder="Filter sidebar..." style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-primary);color:var(--text-primary);font-size:12px;outline:none" /></div>
+      <div class="tab-panel" id="sidebar-content"></div>
+    </aside>
+    <main class="main-content">
+      <div id="view-home" class="view"></div>
+      <div id="view-domain" class="view hidden"></div>
+      <div id="view-report" class="view hidden"></div>
+      <div id="view-measure" class="view hidden"></div>
+      <div id="view-table" class="view hidden"></div>
+      <div id="view-lineage" class="view hidden"></div>
+    </main>
+  </div>
+
+<script>
+const RAW_DATA = {"modelName": "Contoso Retail Analytics", "tables": [{"name": "Fact Sales", "type": "fact", "columns": [{"name": "OrderID", "dataType": "Int64"}, {"name": "OrderDate", "dataType": "DateTime"}, {"name": "CustomerID", "dataType": "Int64"}, {"name": "ProductID", "dataType": "Int64"}, {"name": "StoreID", "dataType": "Int64"}, {"name": "Quantity", "dataType": "Int64"}, {"name": "UnitPrice", "dataType": "Decimal"}, {"name": "DiscountAmount", "dataType": "Decimal"}, {"name": "TotalAmount", "dataType": "Decimal"}, {"name": "CostAmount", "dataType": "Decimal"}], "measures": []}, {"name": "Fact Inventory", "type": "fact", "columns": [{"name": "ProductID", "dataType": "Int64"}, {"name": "StoreID", "dataType": "Int64"}, {"name": "SnapshotDate", "dataType": "DateTime"}, {"name": "OnHandQuantity", "dataType": "Int64"}, {"name": "OnOrderQuantity", "dataType": "Int64"}, {"name": "SafetyStockLevel", "dataType": "Int64"}], "measures": []}, {"name": "Fact Returns", "type": "fact", "columns": [{"name": "ReturnID", "dataType": "Int64"}, {"name": "OrderID", "dataType": "Int64"}, {"name": "ReturnDate", "dataType": "DateTime"}, {"name": "ProductID", "dataType": "Int64"}, {"name": "ReturnQuantity", "dataType": "Int64"}, {"name": "ReturnReason", "dataType": "String"}], "measures": []}, {"name": "Dim Customer", "type": "dimension", "columns": [{"name": "CustomerID", "dataType": "Int64"}, {"name": "CustomerName", "dataType": "String"}, {"name": "Email", "dataType": "String"}, {"name": "City", "dataType": "String"}, {"name": "State", "dataType": "String"}, {"name": "Country", "dataType": "String"}, {"name": "Segment", "dataType": "String"}, {"name": "JoinDate", "dataType": "DateTime"}], "measures": []}, {"name": "Dim Product", "type": "dimension", "columns": [{"name": "ProductID", "dataType": "Int64"}, {"name": "ProductName", "dataType": "String"}, {"name": "Category", "dataType": "String"}, {"name": "SubCategory", "dataType": "String"}, {"name": "Brand", "dataType": "String"}, {"name": "Color", "dataType": "String"}, {"name": "UnitCost", "dataType": "Decimal"}, {"name": "ListPrice", "dataType": "Decimal"}], "measures": []}, {"name": "Dim Store", "type": "dimension", "columns": [{"name": "StoreID", "dataType": "Int64"}, {"name": "StoreName", "dataType": "String"}, {"name": "StoreType", "dataType": "String"}, {"name": "City", "dataType": "String"}, {"name": "State", "dataType": "String"}, {"name": "Country", "dataType": "String"}, {"name": "SquareMeters", "dataType": "Int64"}, {"name": "OpenDate", "dataType": "DateTime"}], "measures": []}, {"name": "Dim Date", "type": "dimension", "columns": [{"name": "Date", "dataType": "DateTime"}, {"name": "Year", "dataType": "Int64"}, {"name": "Quarter", "dataType": "String"}, {"name": "Month", "dataType": "String"}, {"name": "MonthNumber", "dataType": "Int64"}, {"name": "WeekNumber", "dataType": "Int64"}, {"name": "DayOfWeek", "dataType": "String"}, {"name": "IsWeekend", "dataType": "Boolean"}, {"name": "FiscalYear", "dataType": "Int64"}, {"name": "FiscalQuarter", "dataType": "String"}], "measures": []}, {"name": "_Sales Measures", "type": "measure", "columns": [], "measures": [{"name": "Total Revenue", "expression": "SUM('Fact Sales'[TotalAmount])"}, {"name": "Total Cost", "expression": "SUM('Fact Sales'[CostAmount])"}, {"name": "Total Quantity", "expression": "SUM('Fact Sales'[Quantity])"}, {"name": "Total Discount", "expression": "SUM('Fact Sales'[DiscountAmount])"}, {"name": "Gross Profit", "expression": "[Total Revenue] - [Total Cost]"}, {"name": "Gross Margin %", "expression": "DIVIDE([Gross Profit], [Total Revenue], 0)"}, {"name": "Net Revenue", "expression": "[Total Revenue] - [Total Discount]"}, {"name": "Average Order Value", "expression": "DIVIDE([Total Revenue], DISTINCTCOUNT('Fact Sales'[OrderID]), 0)"}, {"name": "Revenue per Unit", "expression": "DIVIDE([Total Revenue], [Total Quantity], 0)"}, {"name": "Discount Rate", "expression": "DIVIDE([Total Discount], [Total Revenue], 0)"}, {"name": "Revenue YTD", "expression": "TOTALYTD([Total Revenue], 'Dim Date'[Date])"}, {"name": "Revenue vs PY", "expression": "VAR _CurrentRevenue = [Total Revenue]\nVAR _PYRevenue = CALCULATE([Total Revenue], SAMEPERIODLASTYEAR('Dim Date'[Date]))\nRETURN\n    DIVIDE(_CurrentRevenue - _PYRevenue, _PYRevenue, 0)"}, {"name": "Revenue PY", "expression": "CALCULATE([Total Revenue], SAMEPERIODLASTYEAR('Dim Date'[Date]))"}, {"name": "Revenue Growth", "expression": "[Total Revenue] - [Revenue PY]"}, {"name": "Revenue Rolling 3M", "expression": "CALCULATE([Total Revenue], DATESINPERIOD('Dim Date'[Date], MAX('Dim Date'[Date]), -3, MONTH))"}]}, {"name": "_Customer Measures", "type": "measure", "columns": [], "measures": [{"name": "Total Customers", "expression": "DISTINCTCOUNT('Fact Sales'[CustomerID])"}, {"name": "New Customers", "expression": "VAR _CurrentPeriodCustomers = VALUES('Fact Sales'[CustomerID])\nVAR _PriorCustomers =\n    CALCULATETABLE(\n        VALUES('Fact Sales'[CustomerID]),\n        DATEADD('Dim Date'[Date], -1, YEAR)\n    )\nRETURN\n    COUNTROWS(EXCEPT(_CurrentPeriodCustomers, _PriorCustomers))"}, {"name": "Returning Customers", "expression": "[Total Customers] - [New Customers]"}, {"name": "Customer Retention Rate", "expression": "DIVIDE([Returning Customers], [Total Customers], 0)"}, {"name": "Revenue per Customer", "expression": "DIVIDE([Total Revenue], [Total Customers], 0)"}, {"name": "Avg Orders per Customer", "expression": "DIVIDE(DISTINCTCOUNT('Fact Sales'[OrderID]), [Total Customers], 0)"}, {"name": "Customer Lifetime Value", "expression": "[Revenue per Customer] * [Avg Orders per Customer]"}]}, {"name": "_Inventory Measures", "type": "measure", "columns": [], "measures": [{"name": "Current Stock", "expression": "SUM('Fact Inventory'[OnHandQuantity])"}, {"name": "On Order", "expression": "SUM('Fact Inventory'[OnOrderQuantity])"}, {"name": "Safety Stock", "expression": "SUM('Fact Inventory'[SafetyStockLevel])"}, {"name": "Stock Coverage Days", "expression": "VAR _DailyDemand = DIVIDE([Total Quantity], 365, 0)\nRETURN\n    DIVIDE([Current Stock], _DailyDemand, 0)"}, {"name": "Below Safety Stock", "expression": "CALCULATE(\n    COUNTROWS('Fact Inventory'),\n    'Fact Inventory'[OnHandQuantity] < 'Fact Inventory'[SafetyStockLevel]\n)"}, {"name": "Inventory Turnover", "expression": "DIVIDE([Total Cost], [Current Stock], 0)"}]}, {"name": "_Returns Measures", "type": "measure", "columns": [], "measures": [{"name": "Total Returns", "expression": "COUNTROWS('Fact Returns')"}, {"name": "Return Quantity", "expression": "SUM('Fact Returns'[ReturnQuantity])"}, {"name": "Return Rate", "expression": "DIVIDE([Return Quantity], [Total Quantity], 0)"}, {"name": "Return Rate by Orders", "expression": "DIVIDE(\n    DISTINCTCOUNT('Fact Returns'[OrderID]),\n    DISTINCTCOUNT('Fact Sales'[OrderID]),\n    0\n)"}]}], "reports": [{"name": "Sales - Executive Dashboard", "domain": "Sales", "pages": [{"name": "Overview", "visuals": 8, "visualTypes": {"card": 4, "lineChart": 1, "clusteredBarChart": 1, "pieChart": 1, "table": 1}, "measures": ["Total Revenue", "Gross Profit", "Gross Margin %", "Total Quantity", "Revenue YTD", "Revenue vs PY", "Average Order Value"], "tables": ["Fact Sales", "Dim Date", "Dim Product"]}, {"name": "Revenue Trends", "visuals": 5, "visualTypes": {"lineChart": 2, "areaChart": 1, "clusteredBarChart": 1, "card": 1}, "measures": ["Total Revenue", "Revenue PY", "Revenue Growth", "Revenue Rolling 3M", "Revenue YTD"], "tables": ["Fact Sales", "Dim Date"]}, {"name": "Profitability", "visuals": 6, "visualTypes": {"card": 2, "waterfallChart": 1, "clusteredBarChart": 2, "table": 1}, "measures": ["Total Revenue", "Total Cost", "Gross Profit", "Gross Margin %", "Net Revenue", "Total Discount", "Discount Rate"], "tables": ["Fact Sales", "Dim Product", "Dim Store"]}]}, {"name": "Sales - Product Performance", "domain": "Sales", "pages": [{"name": "Product Overview", "visuals": 7, "visualTypes": {"table": 1, "clusteredBarChart": 2, "treemap": 1, "card": 3}, "measures": ["Total Revenue", "Total Quantity", "Gross Margin %", "Revenue per Unit", "Average Order Value"], "tables": ["Fact Sales", "Dim Product", "Dim Date"]}, {"name": "Category Analysis", "visuals": 5, "visualTypes": {"clusteredBarChart": 2, "pieChart": 1, "matrix": 1, "card": 1}, "measures": ["Total Revenue", "Gross Profit", "Total Quantity", "Gross Margin %"], "tables": ["Fact Sales", "Dim Product"]}]}, {"name": "Sales - Store Analytics", "domain": "Sales", "pages": [{"name": "Store Performance", "visuals": 6, "visualTypes": {"map": 1, "table": 1, "clusteredBarChart": 2, "card": 2}, "measures": ["Total Revenue", "Total Quantity", "Gross Profit", "Average Order Value", "Total Customers"], "tables": ["Fact Sales", "Dim Store", "Dim Date"]}]}, {"name": "Customer - Segmentation", "domain": "Customer", "pages": [{"name": "Customer Overview", "visuals": 7, "visualTypes": {"card": 3, "clusteredBarChart": 2, "donutChart": 1, "table": 1}, "measures": ["Total Customers", "New Customers", "Returning Customers", "Customer Retention Rate", "Revenue per Customer"], "tables": ["Fact Sales", "Dim Customer", "Dim Date"]}, {"name": "Customer Value", "visuals": 5, "visualTypes": {"scatterChart": 1, "table": 1, "card": 2, "clusteredBarChart": 1}, "measures": ["Revenue per Customer", "Avg Orders per Customer", "Customer Lifetime Value", "Total Customers"], "tables": ["Fact Sales", "Dim Customer"]}]}, {"name": "Inventory - Stock Management", "domain": "Inventory", "pages": [{"name": "Stock Levels", "visuals": 6, "visualTypes": {"card": 3, "clusteredBarChart": 1, "table": 1, "gauge": 1}, "measures": ["Current Stock", "On Order", "Safety Stock", "Stock Coverage Days", "Below Safety Stock", "Inventory Turnover"], "tables": ["Fact Inventory", "Dim Product", "Dim Store"]}]}, {"name": "Returns - Analysis", "domain": "Returns", "pages": [{"name": "Returns Overview", "visuals": 5, "visualTypes": {"card": 2, "clusteredBarChart": 1, "pieChart": 1, "table": 1}, "measures": ["Total Returns", "Return Quantity", "Return Rate", "Return Rate by Orders", "Total Revenue"], "tables": ["Fact Returns", "Fact Sales", "Dim Product", "Dim Date"]}]}], "domains": {"Sales": ["Sales - Executive Dashboard", "Sales - Product Performance", "Sales - Store Analytics"], "Customer": ["Customer - Segmentation"], "Inventory": ["Inventory - Stock Management"], "Returns": ["Returns - Analysis"]}};
+
+const BUNDLE = { model: { name: RAW_DATA.modelName || "Semantic Model", tables: RAW_DATA.tables }, reports: RAW_DATA.reports, domainMap: RAW_DATA.domains };
+const MEASURE_USAGE = {};
+for (const r of BUNDLE.reports) for (const p of (r.pages||[])) for (const m of (p.measures||[])) {
+  if (!MEASURE_USAGE[m]) MEASURE_USAGE[m] = [];
+  MEASURE_USAGE[m].push({ report: r.name, domain: r.domain, page: p.name, visuals: p.visuals, visualTypes: p.visualTypes||{} });
+}
+
+function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML}
+function showView(n){document.querySelectorAll('.view').forEach(v=>v.classList.add('hidden'));const e=document.getElementById('view-'+n);if(e){e.classList.remove('hidden');e.style.animation='none';e.offsetHeight;e.style.animation=''}}
+function findMeasure(n){for(const t of BUNDLE.model.tables){const m=t.measures.find(x=>x.name===n);if(m)return{measure:m,table:t.name}}return null}
+function findTable(n){return BUNDLE.model.tables.find(t=>t.name===n)}
+function typeBadge(t){return `<span class="table-type-badge ${t}">${(t||'other').charAt(0).toUpperCase()+(t||'other').slice(1)}</span>`}
+function highlightDax(e){let s=esc(e);['CALCULATE','FILTER','ALL','ALLEXCEPT','ALLSELECTED','SUM','SUMX','AVERAGE','AVERAGEX','COUNTROWS','COUNT','COUNTA','DISTINCTCOUNT','DIVIDE','IF','SWITCH','VAR','RETURN','BLANK','TRUE','FALSE','RELATED','RELATEDTABLE','SELECTEDVALUE','VALUES','FIRSTDATE','LASTDATE','NOT','ISBLANK','COALESCE','MAX','MAXX','MIN','MINX','EARLIER','RANKX','TOPN','ADDCOLUMNS','SUMMARIZE','KEEPFILTERS','REMOVEFILTERS','USERELATIONSHIP','CROSSFILTER','TREATAS','IN','DATATABLE','ROW','ERROR','FORMAT','YEAR','MONTH','DAY','DATE','TODAY','NOW','DATESYTD','DATESMTD','DATESQTD','TOTALYTD','TOTALMTD','TOTALQTD','SAMEPERIODLASTYEAR','DATEADD','PARALLELPERIOD','PREVIOUSMONTH','PREVIOUSYEAR','NEXTMONTH','NEXTYEAR','STARTOFMONTH','ENDOFMONTH','STARTOFYEAR','ENDOFYEAR','CALENDAR','CALENDARAUTO'].forEach(k=>{s=s.replace(new RegExp('\\b('+k+')\\b','gi'),'<span class="dax-keyword">$1</span>')});return s.replace(/\b(\d+\.?\d*)\b/g,'<span class="dax-number">$1</span>')}
+function toggleView(show,hide,btn){document.getElementById('mv-'+show)?.classList.remove('hidden');document.getElementById('mv-'+hide)?.classList.add('hidden');btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));btn.classList.add('active')}
+function filterGlossary(q,tid){q=q.toLowerCase();let last=null,vis=false;document.getElementById(tid).querySelectorAll('tbody tr').forEach(r=>{if(r.classList.contains('glossary-cat-header')){if(last)last.style.display=vis?'':'none';last=r;vis=false}else{const m=!q||r.textContent.toLowerCase().includes(q);r.style.display=m?'':'none';if(m)vis=true}});if(last)last.style.display=vis?'':'none'}
+function toggleGroup(h){const c=h.nextElementSibling,ch=h.querySelector('.chevron');if(c.style.display==='none'){c.style.display='';ch.classList.add('open')}else{c.style.display='none';ch.classList.remove('open')}}
+
+function renderHome(){
+  const T=BUNDLE.model.tables,tM=T.reduce((s,t)=>s+t.measures.length,0),tC=T.reduce((s,t)=>s+t.columns.length,0);
+  const bt={};T.forEach(t=>{bt[t.type]=(bt[t.type]||0)+1});
+  const tbHtml=Object.entries(bt).map(([t,c])=>`<span style="margin-right:12px">${typeBadge(t)} ${c} ${t}</span>`).join('');
+  let dc='';
+  for(const[d,rn]of Object.entries(BUNDLE.domainMap)){const reps=BUNDLE.reports.filter(r=>rn.includes(r.name));const ms=new Set(reps.flatMap(r=>(r.pages||[]).flatMap(p=>p.measures||[]))).size;dc+=`<div class="domain-card" onclick="showDomain('${esc(d)}')"><h3>${esc(d)}</h3><div class="domain-meta">${reps.length} reports &middot; ${ms} measures</div></div>`}
+  document.getElementById('view-home').innerHTML=`<div class="section-title">${esc(BUNDLE.model.name)}</div><div class="section-subtitle">Explore measures, tables, and dependencies across your semantic model.</div><div class="stats-grid"><div class="stat-card"><div class="stat-value">${tM}</div><div class="stat-label">Measures</div></div><div class="stat-card"><div class="stat-value">${T.length}</div><div class="stat-label">Tables</div></div><div class="stat-card"><div class="stat-value">${tC}</div><div class="stat-label">Columns</div></div><div class="stat-card"><div class="stat-value">${BUNDLE.reports.length}</div><div class="stat-label">Reports</div></div></div><div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">${tbHtml}</div>${Object.keys(BUNDLE.domainMap).length>0?`<h3 style="font-size:16px;font-weight:600">${Object.keys(BUNDLE.domainMap).length>1?'Domains':'Reports'}</h3><div class="domain-grid">${dc}</div>`:''}`;
+  showView('home');
+}
+
+function showDomain(name){
+  const rn=BUNDLE.domainMap[name]||[],reps=BUNDLE.reports.filter(r=>rn.includes(r.name));
+  document.getElementById('view-domain').innerHTML=`<div class="breadcrumbs"><a onclick="renderHome()">Home</a><span class="separator">/</span><span>${esc(name)}</span></div><div class="section-title">${esc(name)}</div><div class="section-subtitle">${reps.length} reports</div><div class="card"><ul class="measure-list">${reps.map(r=>{const pg=r.pages||[];return`<li class="measure-list-item" onclick="showReport('${esc(r.name)}')"><span class="search-type-badge" data-type="report">Report</span><span>${esc(r.name)}</span><span style="margin-left:auto;font-size:11px;color:var(--text-muted)">${pg.length} pages, ${new Set(pg.flatMap(p=>p.measures||[])).size} measures</span></li>`}).join('')}</ul></div>`;
+  showView('domain');
+}
+
+function showReport(name){
+  const r=BUNDLE.reports.find(x=>x.name===name);if(!r)return;
+  const pages=r.pages||[],tv=pages.reduce((s,p)=>s+p.visuals,0),am=[...new Set(pages.flatMap(p=>p.measures||[]))].sort(),at=[...new Set(pages.flatMap(p=>p.tables||[]))].sort();
+  const mp={};pages.forEach(p=>{for(const m of(p.measures||[]))if(!mp[m])mp[m]=[],mp[m].push(p.name);else mp[m].push(p.name)});
+  let rows='';
+  if(am.length>0){rows+=`<tr class="glossary-cat-header"><td colspan="4"><span class="glossary-cat-icon" style="background:var(--badge-measure)">M</span> Measures (${am.length})</td></tr>`;for(const m of am){const pl=(mp[m]||[]).join(', ');rows+=`<tr class="glossary-row clickable" onclick="showMeasure('${esc(m)}')"><td><span class="glossary-cat-badge" style="background:var(--badge-measure)">Measure</span></td><td class="glossary-term">${esc(m)}</td><td class="glossary-desc"><em style="color:var(--text-muted)">—</em></td><td class="glossary-pages">${esc(pl)}</td></tr>`}}
+  rows+=`<tr class="glossary-cat-header"><td colspan="4"><span class="glossary-cat-icon" style="background:var(--badge-report)">P</span> Pages (${pages.length})</td></tr>`;
+  pages.forEach(p=>{const vt=Object.entries(p.visualTypes||{}).filter(([k])=>k!=='other').slice(0,5).map(([t,c])=>`${c} ${t}`).join(', ');rows+=`<tr class="glossary-row"><td><span class="glossary-cat-badge" style="background:var(--badge-report)">Page</span></td><td class="glossary-term">${esc(p.name)}</td><td class="glossary-desc">${p.visuals} visuals${vt?' — '+esc(vt):''}</td><td class="glossary-pages">${(p.measures||[]).length} measures</td></tr>`});
+  if(at.length>0){rows+=`<tr class="glossary-cat-header"><td colspan="4"><span class="glossary-cat-icon" style="background:var(--badge-table)">T</span> Tables (${at.length})</td></tr>`;for(const t of at){const tbl=findTable(t),type=tbl?tbl.type:'other',pl=[...new Set(pages.filter(p=>(p.tables||[]).includes(t)).map(p=>p.name))].join(', ');rows+=`<tr class="glossary-row clickable" onclick="showTable('${esc(t)}')"><td>${typeBadge(type)}</td><td class="glossary-term">${esc(t)}</td><td class="glossary-desc">${tbl?`${tbl.columns.length} columns, ${tbl.measures.length} measures`:''}</td><td class="glossary-pages">${esc(pl)}</td></tr>`}}
+  const domainCrumb = r.domain && r.domain !== 'Default' ? `<a onclick="showDomain('${esc(r.domain)}')">${esc(r.domain)}</a><span class="separator">/</span>` : '';
+  document.getElementById('view-report').innerHTML=`<div class="breadcrumbs"><a onclick="renderHome()">Home</a><span class="separator">/</span>${domainCrumb}<span>${esc(name)}</span></div><div style="display:flex;align-items:center;gap:16px;margin-bottom:8px"><div class="section-title" style="margin-bottom:0">${esc(name)}</div><button class="lineage-page-btn" onclick="showLineage('${esc(name)}')" style="font-size:11px;padding:4px 12px">&#9654; View Lineage</button></div><div class="section-subtitle">${r.domain&&r.domain!=='Default'?esc(r.domain)+' &middot; ':''}${pages.length} pages &middot; ${tv} visuals &middot; ${am.length} measures &middot; ${at.length} tables</div><div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div class="card-title" style="margin-bottom:0">Report Glossary</div><input type="text" placeholder="Filter terms..." style="padding:5px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-secondary);color:var(--text-primary);outline:none;width:200px" oninput="filterGlossary(this.value,'rg-table')" /></div><table class="column-table" id="rg-table"><thead><tr><th style="width:80px">Category</th><th style="width:190px">Term</th><th>Description</th><th style="width:150px">Found On</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  showView('report');
+}
+
+function showMeasure(name){
+  const f=findMeasure(name);if(!f)return;
+  const{measure,table:st}=f,dax=highlightDax(measure.expression||'N/A'),usage=MEASURE_USAGE[name]||[];
+  const byR={};for(const u of usage){if(!byR[u.report])byR[u.report]={domain:u.domain,pages:[]};byR[u.report].pages.push(u)}
+  let uh='';if(usage.length>0){uh=`<div class="card"><div class="card-title">Used In Reports (${Object.keys(byR).length})</div>`;for(const[rn,info]of Object.entries(byR))uh+=`<div style="padding:6px 0;border-bottom:1px solid var(--border)"><a onclick="showReport('${esc(rn)}')" style="font-weight:500;color:var(--accent);cursor:pointer;font-size:13px">${esc(rn)}</a><span style="font-size:11px;color:var(--text-muted);margin-left:8px">${info.pages.map(p=>esc(p.page)).join(', ')}</span></div>`;uh+='</div>'}
+  document.getElementById('view-measure').innerHTML=`<div class="breadcrumbs"><a onclick="renderHome()">Home</a><span class="separator">/</span><a onclick="showTable('${esc(st)}')">${esc(st)}</a><span class="separator">/</span><span>${esc(name)}</span></div><div class="section-title">${esc(name)}</div><div class="section-subtitle">Table: ${esc(st)}</div><div class="card"><div class="biz-section"><h4>DAX Expression</h4><div class="dax-block">${dax}</div></div></div>${uh}`;
+  showView('measure');
+}
+
+function showTable(name){
+  const table=findTable(name);
+  if(!table){document.getElementById('view-table').innerHTML=`<div class="breadcrumbs"><a onclick="renderHome()">Home</a><span class="separator">/</span><span>${esc(name)}</span></div><div class="section-title">${esc(name)}</div><div class="card"><p style="color:var(--text-muted)">Referenced in reports but detailed metadata not available.</p></div>`;showView('table');return}
+  const usedIn=[];for(const r of BUNDLE.reports){const pgs=(r.pages||[]).filter(p=>(p.tables||[]).includes(name));if(pgs.length>0)usedIn.push({report:r.name,domain:r.domain,pages:pgs.map(p=>p.name)})}
+  let colsHtml='';
+  if(table.columns.length>0)colsHtml=`<div class="card"><div class="card-title">Columns (${table.columns.length})</div><table class="column-table"><thead><tr><th>Name</th><th>Type</th></tr></thead><tbody>${table.columns.map(c=>`<tr><td>${esc(c.name)}</td><td style="color:var(--text-muted);font-size:12px">${esc(c.dataType||'')}</td></tr>`).join('')}</tbody></table></div>`;
+  let measHtml='';
+  if(table.measures.length>0)measHtml=`<div class="card"><div class="card-title">Measures (${table.measures.length})</div><ul class="measure-list">${table.measures.map(m=>`<li class="measure-list-item" onclick="showMeasure('${esc(m.name)}')"><span class="search-type-badge" data-type="measure" style="font-size:9px;padding:1px 5px">M</span><span>${esc(m.name)}</span></li>`).join('')}</ul></div>`;
+  let usedHtml='';
+  if(usedIn.length>0)usedHtml=`<div class="card"><div class="card-title">Used In Reports (${usedIn.length})</div>${usedIn.map(u=>`<div style="padding:6px 0;border-bottom:1px solid var(--border)"><a onclick="showReport('${esc(u.report)}')" style="font-weight:500;color:var(--accent);cursor:pointer;font-size:13px">${esc(u.report)}</a><span style="font-size:11px;color:var(--text-muted);margin-left:8px">${esc(u.pages.join(', '))}</span></div>`).join('')}</div>`;
+  document.getElementById('view-table').innerHTML=`<div class="breadcrumbs"><a onclick="renderHome()">Home</a><span class="separator">/</span><span>${esc(name)}</span></div><div class="section-title">${esc(name)}</div><div class="section-subtitle">${typeBadge(table.type)} &middot; ${table.columns.length} columns &middot; ${table.measures.length} measures &middot; Used in ${usedIn.length} reports</div>${colsHtml}${measHtml}${usedHtml}`;
+  showView('table');
+}
+
+// Sidebar
+function renderSidebar(){
+  let h='<div style="padding:6px 8px;font-size:11px;font-weight:600;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px">Domains</div>';
+  for(const[domain,repNames]of Object.entries(BUNDLE.domainMap)){const reps=BUNDLE.reports.filter(r=>repNames.includes(r.name));const domainMeasures=new Set(reps.flatMap(r=>(r.pages||[]).flatMap(p=>p.measures||[]))).size;h+=`<div class="tree-group" data-sb-domain="${esc(domain)}"><div class="tree-group-header" onclick="toggleGroup(this);showDomain('${esc(domain)}')"><span class="chevron open">&#9654;</span><span>${esc(domain)}</span><span class="count">${domainMeasures}</span></div><div class="tree-children">${reps.map(r=>{const ms=[...new Set((r.pages||[]).flatMap(p=>p.measures||[]))].sort();const short=r.name.replace(r.domain+' - ','');return`<div class="tree-group" data-sb-report="${esc(r.name)}"><div class="tree-group-header" onclick="toggleGroup(this);event.stopPropagation();showReport('${esc(r.name)}')"><span class="chevron">&#9654;</span><span style="font-weight:500;font-size:12px">${esc(short)}</span><span class="count">${ms.length}</span></div><div class="tree-children" style="display:none">${ms.map(m=>`<div class="tree-item" data-sb-measure="${esc(m)}" onclick="event.stopPropagation();showMeasure('${esc(m)}')" title="${esc(m)}"><span class="search-type-badge" data-type="measure" style="font-size:9px;padding:1px 4px">M</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m)}</span></div>`).join('')}${ms.length===0?'<div class="tree-item" style="color:var(--text-muted);font-style:italic;cursor:default">No measures</div>':''}</div></div>`}).join('')}</div></div>`}
+  h+='<div style="margin-top:16px;padding:6px 8px;font-size:11px;font-weight:600;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px">Tables</div>';
+  for(const type of['fact','dimension','measure','parameter','other']){const ts=BUNDLE.model.tables.filter(t=>t.type===type);if(!ts.length)continue;const l=type.charAt(0).toUpperCase()+type.slice(1);h+=`<div class="tree-group" data-sb-tgroup="${type}"><div class="tree-group-header" onclick="toggleGroup(this)"><span class="chevron">&#9654;</span>${typeBadge(type)}<span>${l}</span><span class="count">${ts.length}</span></div><div class="tree-children" style="display:none">${ts.map(t=>`<div class="tree-item" data-sb-table="${esc(t.name)}" onclick="event.stopPropagation();showTable('${esc(t.name)}')">${esc(t.name)}</div>`).join('')}</div></div>`}
+  document.getElementById('sidebar-content').innerHTML=h;
+}
+// Sidebar filter
+document.getElementById('sidebar-search').addEventListener('input',function(){
+  const q=this.value.toLowerCase().trim();
+  const panel=document.getElementById('sidebar-content');
+  if(!q){panel.querySelectorAll('.tree-group,.tree-item').forEach(el=>el.style.display='');return}
+  panel.querySelectorAll('[data-sb-measure]').forEach(el=>{el.style.display=el.dataset.sbMeasure.toLowerCase().includes(q)?'':'none'});
+  panel.querySelectorAll('[data-sb-table]').forEach(el=>{el.style.display=el.dataset.sbTable.toLowerCase().includes(q)?'':'none'});
+  panel.querySelectorAll('[data-sb-report]').forEach(el=>{const hasVisible=el.querySelector('[data-sb-measure]:not([style*="display: none"])');const nameMatch=el.dataset.sbReport.toLowerCase().includes(q);el.style.display=(hasVisible||nameMatch)?'':'none';if(hasVisible){el.querySelector('.tree-children').style.display=''}});
+  panel.querySelectorAll('[data-sb-domain]').forEach(el=>{const hasVisible=el.querySelector('[data-sb-report]:not([style*="display: none"])');el.style.display=hasVisible?'':'none';if(hasVisible){el.querySelector('.tree-children').style.display=''}});
+  panel.querySelectorAll('[data-sb-tgroup]').forEach(el=>{const hasVisible=el.querySelector('[data-sb-table]:not([style*="display: none"])');el.style.display=hasVisible?'':'none';if(hasVisible){el.querySelector('.tree-children').style.display=''}});
+});
+
+// Theme, search
+document.getElementById('btn-theme-toggle').addEventListener('click',()=>{const c=document.documentElement.getAttribute('data-theme'),n=c==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);document.getElementById('theme-icon').textContent=n==='dark'?'\u2600':'\u263E'});
+const si=[];for(const t of BUNDLE.model.tables){for(const m of t.measures)si.push({type:'measure',name:m.name,meta:t.name,action:()=>showMeasure(m.name)});for(const c of t.columns)si.push({type:'column',name:c.name,meta:t.name,action:()=>showTable(t.name)});si.push({type:'table',name:t.name,meta:t.type,action:()=>showTable(t.name)})}
+for(const r of BUNDLE.reports)si.push({type:'report',name:r.name,meta:r.domain,action:()=>showReport(r.name)});
+const sI=document.getElementById('global-search'),sR=document.getElementById('search-results');
+sI.addEventListener('input',()=>{const q=sI.value.toLowerCase();if(q.length<2){sR.classList.add('hidden');return}const h=si.filter(i=>i.name.toLowerCase().includes(q)).slice(0,15);if(!h.length){sR.classList.add('hidden');return}sR.innerHTML=h.map((x,i)=>`<div class="search-result-item" data-idx="${i}"><span class="search-type-badge" data-type="${x.type}">${x.type.charAt(0).toUpperCase()+x.type.slice(1)}</span><span>${esc(x.name)}</span><span style="margin-left:auto;font-size:11px;color:var(--text-muted)">${esc(x.meta)}</span></div>`).join('');sR.classList.remove('hidden');sR.querySelectorAll('.search-result-item').forEach(el=>{el.addEventListener('click',()=>{h[+el.dataset.idx].action();sR.classList.add('hidden');sI.value=''})})});
+document.addEventListener('click',e=>{if(!sI.contains(e.target)&&!sR.contains(e.target))sR.classList.add('hidden')});
+document.addEventListener('keydown',e=>{if(e.key==='/'&&!['INPUT','TEXTAREA'].includes(document.activeElement?.tagName)){e.preventDefault();sI.focus()}});
+
+// --- Lineage ---
+function parseDaxDeps(expr) {
+  if (!expr) return { measures: [], columns: [] };
+  const measures = [], columns = [], seen = new Set();
+  const mRe = /(?<!')\[([^\]]+)\]/g; let m;
+  while ((m = mRe.exec(expr)) !== null) { const n = m[1]; if (!seen.has('m:'+n)) { seen.add('m:'+n); measures.push(n); } }
+  const cRe = /'([^']+)'\[([^\]]+)\]/g;
+  while ((m = cRe.exec(expr)) !== null) { const k = m[1]+'['+m[2]+']'; if (!seen.has('c:'+k)) { seen.add('c:'+k); columns.push({ table: m[1], column: m[2] }); } }
+  const colNames = new Set(columns.map(c => c.column));
+  const pureMeasures = measures.filter(mm => !colNames.has(mm));
+  return { measures: pureMeasures, columns };
+}
+
+function showLineage(reportName, pageName) {
+  const r = BUNDLE.reports.find(x => x.name === reportName);
+  if (!r) return;
+  const pages = r.pages || [];
+  const page = pageName ? pages.find(p => p.name === pageName) : pages[0];
+  if (!page) return;
+  let pageBtns = pages.map(p =>
+    `<button class="lineage-page-btn${p.name===page.name?' active':''}" onclick="showLineage('${esc(reportName)}','${esc(p.name)}')">${esc(p.name)}</button>`
+  ).join('');
+  const pageMeasures = [...new Set(page.measures || [])].sort();
+  let pickerHtml = pageMeasures.map((mn, i) =>
+    `<div class="lin-pick-item${i===0?' active':''}" data-measure="${esc(mn)}" onclick="selectLineageMeasure(this,'${esc(mn)}')"><span class="lin-pick-dot"></span><span>${esc(mn)}</span></div>`
+  ).join('');
+  if (!pickerHtml) pickerHtml = '<div class="lin-empty">No measures on this page</div>';
+  const firstTree = pageMeasures.length > 0 ? buildMeasureTree(pageMeasures[0]) : '<div class="lin-empty">Select a measure to explore its dependencies</div>';
+  const domainCrumb = r.domain && r.domain !== 'Default' ? `<a onclick="showDomain('${esc(r.domain)}')">${esc(r.domain)}</a><span class="separator">/</span>` : '';
+  document.getElementById('view-lineage').innerHTML = `
+    <div class="breadcrumbs"><a onclick="renderHome()">Home</a><span class="separator">/</span>${domainCrumb}<a onclick="showReport('${esc(reportName)}')">${esc(reportName)}</a><span class="separator">/</span><span>Lineage</span></div>
+    <div class="section-title">Lineage: ${esc(page.name)}</div>
+    <div class="section-subtitle">Select a measure to see what it depends on.</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px">${pageBtns}</div>
+    <div class="lin-grid"><div class="lin-pick"><div class="lin-pick-title">Measures (${pageMeasures.length})</div>${pickerHtml}</div><div class="lin-tree" id="lin-tree-content">${firstTree}</div></div>`;
+  showView('lineage');
+}
+
+function selectLineageMeasure(el, name) {
+  el.parentElement.querySelectorAll('.lin-pick-item').forEach(e => e.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('lin-tree-content').innerHTML = buildMeasureTree(name);
+}
+
+function buildMeasureTree(name, depth) {
+  depth = depth || 0;
+  if (depth > 3) return '<div class="lin-no-deps">Max depth reached</div>';
+  const f = findMeasure(name);
+  if (!f) return `<div class="lin-root"><div class="lin-root-header"><span class="lin-root-dot"></span>${esc(name)}<span class="lin-root-table">Not found in model</span></div></div>`;
+  const { measure, table: tbl } = f;
+  const deps = parseDaxDeps(measure.expression);
+  const hasDeps = deps.measures.length > 0 || deps.columns.length > 0;
+  let depsHtml = '';
+  if (deps.measures.length > 0) {
+    depsHtml += `<div class="lin-dep-group-label">Sub-Measures (${deps.measures.length})</div>`;
+    for (const sm of deps.measures) {
+      const smFound = findMeasure(sm);
+      const smDeps = smFound ? parseDaxDeps(smFound.measure.expression) : { measures: [], columns: [] };
+      const smTotal = smDeps.measures.length + smDeps.columns.length;
+      depsHtml += `<div class="lin-dep submeasure" onclick="showMeasure('${esc(sm)}')"><span class="lin-dep-dot"></span><span class="lin-dep-name">${esc(sm)}</span><span class="lin-dep-type">${smFound ? smTotal + ' deps' : 'not in model'}</span></div>`;
+      if (smFound && smTotal > 0 && depth < 2) {
+        depsHtml += '<div style="padding-left:20px;border-left:1.5px dashed var(--border);margin-left:16px;margin-bottom:4px">';
+        for (const ssm of smDeps.measures.slice(0, 5)) {
+          depsHtml += `<div class="lin-dep submeasure" style="padding:5px 10px;font-size:11px;margin-bottom:2px" onclick="showMeasure('${esc(ssm)}')"><span class="lin-dep-dot"></span><span class="lin-dep-name">${esc(ssm)}</span><span class="lin-dep-type">Sub-Measure</span></div>`;
+        }
+        for (const sc of smDeps.columns.slice(0, 5)) {
+          depsHtml += `<div class="lin-dep column" style="padding:5px 10px;font-size:11px;margin-bottom:2px" onclick="showTable('${esc(sc.table)}')"><span class="lin-dep-dot"></span><span class="lin-dep-name">${esc(sc.table)}[${esc(sc.column)}]</span><span class="lin-dep-type">Column</span></div>`;
+        }
+        if (smDeps.measures.length + smDeps.columns.length > 10) depsHtml += '<div style="font-size:10px;color:var(--text-muted);padding:2px 10px">+ more...</div>';
+        depsHtml += '</div>';
+      }
+    }
+  }
+  if (deps.columns.length > 0) {
+    depsHtml += `<div class="lin-dep-group-label">Columns (${deps.columns.length})</div>`;
+    for (const c of deps.columns) {
+      depsHtml += `<div class="lin-dep column" onclick="showTable('${esc(c.table)}')"><span class="lin-dep-dot"></span><span class="lin-dep-name">${esc(c.table)}[${esc(c.column)}]</span><span class="lin-dep-type">Table & Column</span></div>`;
+    }
+  }
+  if (!hasDeps) depsHtml = '<div class="lin-no-deps">No dependencies — this is a leaf measure or uses only constants.</div>';
+  return `<div class="lin-root"><div class="lin-root-header" style="cursor:pointer" onclick="showMeasure('${esc(name)}')"><span class="lin-root-dot"></span>${esc(name)}<span class="lin-root-table">${esc(tbl)}</span></div><div class="lin-deps">${depsHtml}</div></div>`;
+}
+
+renderSidebar();renderHome();
+
+</script>
+</body>
+</html>
