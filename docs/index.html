@@ -115,6 +115,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .dax-number{color:#098658}
 [data-theme="dark"] .dax-keyword{color:#569CD6}
 [data-theme="dark"] .dax-number{color:#B5CEA8}
+.confusion-warning{background:#FFF7ED;border:1px solid #FED7AA;border-radius:var(--radius-sm);padding:10px 12px;font-size:13px;color:#9A3412}
+[data-theme="dark"] .confusion-warning{background:#451A03;border-color:#92400E;color:#FED7AA}
 .dep-chip{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:12px;cursor:pointer}
 .dep-chip.measure-dep{background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent)}
 .measure-list{list-style:none}
@@ -247,7 +249,9 @@ function showMeasure(name){
   const{measure,table:st}=f,dax=highlightDax(measure.expression||'N/A'),usage=MEASURE_USAGE[name]||[];
   const byR={};for(const u of usage){if(!byR[u.report])byR[u.report]={domain:u.domain,pages:[]};byR[u.report].pages.push(u)}
   let uh='';if(usage.length>0){uh=`<div class="card"><div class="card-title">Used In Reports (${Object.keys(byR).length})</div>`;for(const[rn,info]of Object.entries(byR))uh+=`<div style="padding:6px 0;border-bottom:1px solid var(--border)"><a onclick="showReport('${esc(rn)}')" style="font-weight:500;color:var(--accent);cursor:pointer;font-size:13px">${esc(rn)}</a><span style="font-size:11px;color:var(--text-muted);margin-left:8px">${info.pages.map(p=>esc(p.page)).join(', ')}</span></div>`;uh+='</div>'}
-  document.getElementById('view-measure').innerHTML=`<div class="breadcrumbs"><a onclick="renderHome()">Home</a><span class="separator">/</span><a onclick="showTable('${esc(st)}')">${esc(st)}</a><span class="separator">/</span><span>${esc(name)}</span></div><div class="section-title">${esc(name)}</div><div class="section-subtitle">Table: ${esc(st)}</div><div class="card"><div class="biz-section"><h4>DAX Expression</h4><div class="dax-block">${dax}</div></div></div>${uh}`;
+  const deps=parseDaxDeps(measure.expression||'');const depMeasures=deps.measures;const depColumns=deps.columns;
+  let depHtml='';if(depMeasures.length>0||depColumns.length>0){depHtml='<div class="biz-section"><h4>Dependencies</h4><div style="display:flex;flex-wrap:wrap;gap:6px">';for(const dm of depMeasures)depHtml+=`<span class="dep-chip measure-dep" onclick="showMeasure('${esc(dm)}')">${esc(dm)}</span>`;for(const dc of depColumns)depHtml+=`<span class="dep-chip" style="background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border);cursor:pointer" onclick="showTable('${esc(dc.table)}')">${esc(dc.table)}[${esc(dc.column)}]</span>`;depHtml+='</div></div>'}
+  document.getElementById('view-measure').innerHTML=`<div class="breadcrumbs"><a onclick="renderHome()">Home</a><span class="separator">/</span><a onclick="showTable('${esc(st)}')">${esc(st)}</a><span class="separator">/</span><span>${esc(name)}</span></div><div class="section-title">${esc(name)}</div><div class="section-subtitle">Table: ${esc(st)}</div><div class="view-toggle"><button class="active" onclick="toggleView('biz','tech',this)">Business</button><button onclick="toggleView('tech','biz',this)">Technical</button></div><div id="mv-biz"><div class="card"><div class="biz-section"><h4>Description</h4><p style="color:var(--text-muted);font-style:italic">No business description available.</p></div>${depHtml}</div>${uh}</div><div id="mv-tech" class="hidden"><div class="card"><div class="biz-section"><h4>DAX Expression</h4><div class="dax-block">${dax}</div></div></div></div>`;
   showView('measure');
 }
 
@@ -255,13 +259,19 @@ function showTable(name){
   const table=findTable(name);
   if(!table){document.getElementById('view-table').innerHTML=`<div class="breadcrumbs"><a onclick="renderHome()">Home</a><span class="separator">/</span><span>${esc(name)}</span></div><div class="section-title">${esc(name)}</div><div class="card"><p style="color:var(--text-muted)">Referenced in reports but detailed metadata not available.</p></div>`;showView('table');return}
   const usedIn=[];for(const r of BUNDLE.reports){const pgs=(r.pages||[]).filter(p=>(p.tables||[]).includes(name));if(pgs.length>0)usedIn.push({report:r.name,domain:r.domain,pages:pgs.map(p=>p.name)})}
+  let bizDesc='';
+  if(table.type==='dimension')bizDesc=`<p>A <strong>dimension table</strong> providing descriptive attributes for filtering and grouping. Use "${name.replace('Dim ','')}" fields as slicers, row headers, or column headers in reports.</p><p style="margin-top:8px;color:var(--text-secondary)"><strong>${table.columns.length}</strong> attributes available for analysis.</p>`;
+  else if(table.type==='fact')bizDesc=`<p>A <strong>fact table</strong> containing transactional/event data — the raw numbers behind your measures. Measures aggregate values from this table's columns.</p><p style="margin-top:8px;color:var(--text-secondary)"><strong>${table.columns.length}</strong> data columns.</p>`;
+  else if(table.type==='measure')bizDesc=`<p>A <strong>measure table</strong> — a container for DAX calculations. No raw data stored here; it holds <strong>${table.measures.length}</strong> formulas that compute values from fact tables.</p>`;
+  else if(table.type==='parameter')bizDesc=`<p>A <strong>parameter/selector table</strong> for report interactivity — toggles, dropdowns, and view switches that control how data is displayed.</p>`;
+  else bizDesc=`<p>A supporting table used in the data model.</p>`;
   let colsHtml='';
   if(table.columns.length>0)colsHtml=`<div class="card"><div class="card-title">Columns (${table.columns.length})</div><table class="column-table"><thead><tr><th>Name</th><th>Type</th></tr></thead><tbody>${table.columns.map(c=>`<tr><td>${esc(c.name)}</td><td style="color:var(--text-muted);font-size:12px">${esc(c.dataType||'')}</td></tr>`).join('')}</tbody></table></div>`;
   let measHtml='';
   if(table.measures.length>0)measHtml=`<div class="card"><div class="card-title">Measures (${table.measures.length})</div><ul class="measure-list">${table.measures.map(m=>`<li class="measure-list-item" onclick="showMeasure('${esc(m.name)}')"><span class="search-type-badge" data-type="measure" style="font-size:9px;padding:1px 5px">M</span><span>${esc(m.name)}</span></li>`).join('')}</ul></div>`;
   let usedHtml='';
   if(usedIn.length>0)usedHtml=`<div class="card"><div class="card-title">Used In Reports (${usedIn.length})</div>${usedIn.map(u=>`<div style="padding:6px 0;border-bottom:1px solid var(--border)"><a onclick="showReport('${esc(u.report)}')" style="font-weight:500;color:var(--accent);cursor:pointer;font-size:13px">${esc(u.report)}</a><span style="font-size:11px;color:var(--text-muted);margin-left:8px">${esc(u.pages.join(', '))}</span></div>`).join('')}</div>`;
-  document.getElementById('view-table').innerHTML=`<div class="breadcrumbs"><a onclick="renderHome()">Home</a><span class="separator">/</span><span>${esc(name)}</span></div><div class="section-title">${esc(name)}</div><div class="section-subtitle">${typeBadge(table.type)} &middot; ${table.columns.length} columns &middot; ${table.measures.length} measures &middot; Used in ${usedIn.length} reports</div>${colsHtml}${measHtml}${usedHtml}`;
+  document.getElementById('view-table').innerHTML=`<div class="breadcrumbs"><a onclick="renderHome()">Home</a><span class="separator">/</span><span>${esc(name)}</span></div><div class="section-title">${esc(name)}</div><div class="section-subtitle">${typeBadge(table.type)} &middot; ${table.columns.length} columns &middot; ${table.measures.length} measures &middot; Used in ${usedIn.length} reports</div><div class="view-toggle"><button class="active" onclick="toggleView('tbl-biz','tbl-tech',this)">Business</button><button onclick="toggleView('tbl-tech','tbl-biz',this)">Technical</button></div><div id="mv-tbl-biz"><div class="card">${bizDesc}</div>${usedHtml}</div><div id="mv-tbl-tech" class="hidden">${colsHtml}${measHtml}</div>`;
   showView('table');
 }
 
