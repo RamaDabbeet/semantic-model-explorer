@@ -20,6 +20,55 @@ No server. No database. No cost. Just your model metadata in a browser.
 - **Dark/light theme** — toggle with one click
 - **Hash routing** — shareable URLs for every view
 
+## How to Connect Your Model
+
+The explorer reads model metadata from `.tmdl` files (the PBIP format). Here's how to get there depending on where your model lives:
+
+### Path A: You already use PBIP format
+
+If you save your Power BI projects as `.pbip` files, you're ready. Your project folder already contains the `.tmdl` files and report definitions the extract script needs. Skip straight to [Quick Start](#quick-start).
+
+### Path B: You have a .pbix file
+
+Convert it to PBIP format in Power BI Desktop:
+
+1. Open your `.pbix` file in Power BI Desktop
+2. Go to **File > Save As**
+3. Change the file type to **Power BI Project (.pbip)**
+4. Save to a folder
+
+This creates a project folder with `.SemanticModel/` and `.Report/` subfolders containing the `.tmdl` files. Then run the extract script against that folder.
+
+### Path C: Your model is published in Microsoft Fabric
+
+If your semantic model lives in a Fabric workspace, use **Git integration** to export it:
+
+1. In the Fabric portal, go to your **workspace settings**
+2. Under **Git integration**, connect to a Git repo (Azure DevOps or GitHub)
+3. Select the semantic model and reports you want to sync
+4. Click **Commit** — Fabric exports your model as PBIP files into the repo
+
+Once synced, your Git repo contains the same `.tmdl` + report structure. Clone it locally and run the extract script.
+
+> **Bonus:** With Fabric Git integration, you can set up a CI/CD pipeline that automatically rebuilds the explorer whenever your model changes. See [CI/CD Integration](#cicd-integration).
+
+### Path D: You have a published model but no Fabric Git integration
+
+Use one of these tools to export your model metadata:
+
+- **Tabular Editor** — connect to your model via XMLA endpoint, then **File > Save to Folder** to export as TMDL
+- **Power BI Desktop** — connect to the published model with a live connection, then save as `.pbip`
+- **Manual JSON** — create `docs/model-bundle.json` by hand following the [JSON format](#json-format) below
+
+### Which path should I use?
+
+| Scenario | Path | Effort |
+|---|---|---|
+| Already saving as .pbip | A | Just run the script |
+| Have a .pbix file | B | Save As PBIP, then run the script |
+| Model in Fabric workspace | C | Connect Git integration, then run the script |
+| Published model, no Git | D | Export via Tabular Editor or create JSON manually |
+
 ## Quick Start
 
 ### Option 1: Use with your own PBIP project (recommended)
